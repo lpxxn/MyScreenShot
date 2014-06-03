@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitBltHelper.cs" />
+    <Compile Include="CaptureImageToolColorTable.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -60,6 +61,7 @@
     <Compile Include="ScreenImageWindow.Designer.cs">
       <DependentUpon>ScreenImageWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="SizeGrip.cs" />
     <Compile Include="WinAPIHelper.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>

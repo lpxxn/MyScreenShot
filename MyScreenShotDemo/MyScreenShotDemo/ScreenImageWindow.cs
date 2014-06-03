@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
@@ -13,12 +15,84 @@ namespace MyScreenShotDemo
 {
     public partial class ScreenImageWindow : Form
     {
+        #region 属性
+
+        private Rectangle selectImageBounds;
+
+        private Rectangle selectImageRect;
+        public Rectangle SelectImageRect
+        {
+            get
+            {
+                return selectImageRect;
+            }
+            set
+            {
+                selectImageRect = value;
+                if (!selectImageRect.IsEmpty)
+                {
+                    CalCulateSizeGripRect();
+                    //使整个窗口客户区无效，此时就需要重绘，这个就会自动调用窗口类的OnPaint函数
+                    base.Invalidate();
+                }
+            }
+        }
+
+        private bool selectedImage;
+        public bool SelectedImage
+        {
+            get { return selectedImage; }
+            set { selectedImage = value; }
+        }
+
+        private Dictionary<SizeGrip, Rectangle> sizeGripRectList;
+
+        public Dictionary<SizeGrip, Rectangle> SizeGripRectList
+        {
+            get
+            {
+                if (sizeGripRectList == null)
+                    sizeGripRectList = new Dictionary<SizeGrip, Rectangle>();
+                return sizeGripRectList;
+            }
+        }
+
+        private Cursor SelectCursor
+        {
+            get; set;
+        }
+
+        private SizeGrip sizeGrip;
+        public SizeGrip SizeGrip
+        {
+            get
+            {
+                return sizeGrip;
+            }
+            set
+            {
+                sizeGrip = value;
+            }
+        }
+
+        private bool mouseDown;
+        private Point mouseDownPoint;
+        private Point endPoint;
+
+        private static readonly Font TextFont =
+           new Font("Times New Roman", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+        #endregion
+
+        #region
         public ScreenImageWindow()
         {
             InitializeComponent();
             Init();
         }
 
+        #endregion
+
+        #region 初始化
         private void Init()
         {
 
@@ -26,19 +100,166 @@ namespace MyScreenShotDemo
                 ControlStyles.UserPaint | 
                 ControlStyles.AllPaintingInWmPaint |
                 ControlStyles.OptimizedDoubleBuffer, true);
-            textBox.Visible = false;
 
             TopMost = true;
             ShowInTaskbar = false;
             FormBorderStyle = FormBorderStyle.None;
 
-            Bounds = Screen.GetBounds(this);
-            //Bounds = new Rectangle(20, 20, 400, 400);
+            //Bounds = Screen.GetBounds(this);
+            Bounds = new Rectangle(200, 200, 500, 500);
 
             BackgroundImage = GetScreenImage();
 
         }
+        #endregion
 
+        #region Override
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            base.OnMouseEnter(e);
+            Cursor = Cursors.Default;
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+
+            if (e.Button == MouseButtons.Left)
+            {
+                if (SelectedImage)
+                {
+                    if (SizeGrip != SizeGrip.None)
+                    {
+                        mouseDown = true;
+                        mouseDownPoint = e.Location;
+                        
+                    }
+                    if (selectImageRect.Contains(e.Location))
+                    {
+                        mouseDown = true;
+                        mouseDownPoint = e.Location;
+                        //ClipCursor(false);
+                    }
+                }
+                else
+                {
+                    mouseDown = true;
+                    mouseDownPoint = e.Location;
+                }
+            }
+            else
+            {
+                mouseDown = true;
+                mouseDownPoint = e.Location;
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (mouseDown)
+            {
+                if (!SelectedImage)
+                {
+                    SelectImageRect = GetSelectImageRect(e.Location);
+                }
+                else
+                {
+                    if (SizeGrip != SizeGrip.None)
+                    {
+                        ChangeSelctImageRect(e.Location);
+                    }
+                }
+            }
+            else
+            {
+                if (!SelectedImage)
+                {
+                }
+                else
+                {
+                    SetSizeGrip(e.Location);
+                }
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button == MouseButtons.Left)
+            {
+                if (!SelectedImage)
+                {
+                    SelectImageRect = GetSelectImageRect(e.Location);
+                    if (!SelectImageRect.IsEmpty)
+                    {
+                        SelectedImage = true;
+                    }
+                }
+                else
+                {
+                    endPoint = e.Location;
+                    base.Invalidate();
+                    if (SizeGrip != SizeGrip.None)
+                    {
+                        selectImageBounds = SelectImageRect;
+                        SizeGrip = SizeGrip.None;
+                    }
+                }
+                mouseDown = false;
+                mouseDownPoint = Point.Empty;
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                
+            }
+
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            if (SelectImageRect.Width != 0 && SelectImageRect.Height != 0)
+            {
+                Rectangle rect = SelectImageRect;
+                if (mouseDown)
+                {
+                    if (!SelectedImage || SizeGrip != SizeGrip.None)
+                    {
+                        using (SolidBrush brush = new SolidBrush(Color.Blue))
+                        {
+                            g.FillRectangle(brush, rect);
+                        }
+                        DrawImageSizeInfo(g, rect);
+                    }
+                }
+
+                using (Pen pen = new Pen(Color.Red))
+                {
+                    g.DrawRectangle(pen, rect);
+                    using (SolidBrush brush = new SolidBrush(Color.Chartreuse))
+                    {
+                        foreach (var rectangle in SizeGripRectList.Values)
+                        {
+                            g.FillRectangle(brush, rectangle);
+                        }
+                    }
+                }
+
+
+            }
+            
+            
+        }
+
+        #endregion
+
+        #region 得到屏幕图片
         /// <summary>
         /// 得到屏幕图片
         /// </summary>
@@ -61,12 +282,251 @@ namespace MyScreenShotDemo
             return bmp;
 
         }
+        #endregion
+
+        #region 四个角的位置
+        private void CalCulateSizeGripRect()
+        {
+            Rectangle rect = SelectImageRect;
+
+            int x = rect.X;
+            int y = rect.Y;
+            int centerX = x + rect.Width / 2;
+            int centerY = y + rect.Height / 2;
+
+            Dictionary<SizeGrip, Rectangle> list = SizeGripRectList;
+            list.Clear();
+
+            list.Add(
+                SizeGrip.TopLeft,
+                new Rectangle(x - 2, y - 2, 5, 5));
+            list.Add(
+                SizeGrip.TopRight,
+                new Rectangle(rect.Right - 2, y - 2, 5, 5));
+            list.Add(
+                SizeGrip.BottomLeft,
+                new Rectangle(x - 2, rect.Bottom - 2, 5, 5));
+            list.Add(
+                SizeGrip.BottomRight,
+                new Rectangle(rect.Right - 2, rect.Bottom - 2, 5, 5));
+            list.Add(
+                SizeGrip.Top,
+                new Rectangle(centerX - 2, y - 2, 5, 5));
+            list.Add(
+                SizeGrip.Bottom,
+                new Rectangle(centerX - 2, rect.Bottom - 2, 5, 5));
+            list.Add(
+                SizeGrip.Left,
+                new Rectangle(x - 2, centerY - 2, 5, 5));
+            list.Add(
+                SizeGrip.Right,
+                new Rectangle(rect.Right - 2, centerY - 2, 5, 5));
+        }
+        #endregion
+
+        #region
+
+        private void ChangeSelctImageRect(Point point)
+        {
+            Rectangle rect = selectImageBounds;
+            int left = rect.Left;
+            int top = rect.Top;
+            int right = rect.Right;
+            int bottom = rect.Bottom;
+            bool sizeGripAll = false;
+            switch (SizeGrip)
+            {
+                case SizeGrip.All:
+                    rect.Offset(point.X - mouseDownPoint.X, point.Y - mouseDownPoint.Y);
+                    sizeGripAll = true;
+                    break;
+                case SizeGrip.TopLeft:
+                    left = point.X;
+                    top = point.Y;
+                    break;
+                case SizeGrip.TopRight:
+                    right = point.X;
+                    top = point.Y;
+                    break;
+                case SizeGrip.BottomLeft:
+                    left = point.X;
+                    bottom = point.Y;
+                    break;
+                case SizeGrip.BottomRight:
+                    right = point.X;
+                    bottom = point.Y;
+                    break;
+                case SizeGrip.Top:
+                    top = point.Y;
+                    break;
+                case SizeGrip.Bottom:
+                    bottom = point.Y;
+                    break;
+                case SizeGrip.Left:
+                    left = point.X;
+                    break;
+                case SizeGrip.Right:
+                    right = point.X;
+                    break;
+            }
+            if (!sizeGripAll)
+            {
+                rect.X = left;
+                rect.Y = top;
+                rect.Width = right - left;
+                rect.Height = bottom - top;
+            }
+            mouseDownPoint = point;
+            selectImageBounds = rect;
+            SelectImageRect = ImageBoundsToRect(rect);
+        }
+        #endregion
 
         private void ScreenImageWindow_KeyDown(object sender, KeyEventArgs e)
         {
             if(e.KeyCode==Keys.Escape)
                 this.Close();
         }
+
+
+        /// <summary>
+        /// 鼠标可移动范围
+        /// </summary>
+        /// <param name="reset"></param>
+        private void ClipCursor(bool reset)
+        {
+            Rectangle rect;
+            if (reset)
+            {
+                rect = Screen.GetBounds(this);
+            }
+            else
+            {
+                rect = SelectImageRect;
+            }
+
+            MouseCanMoveRange.RECT nativeRect = new MouseCanMoveRange.RECT(rect);
+
+            MouseCanMoveRange.ClipCursor(ref nativeRect);
+        }
+
+
+        #region 截图的矩形
+
+        private Rectangle GetSelectImageRect(Point endPoint)
+        {
+            selectImageBounds = Rectangle.FromLTRB(mouseDownPoint.X,
+                mouseDownPoint.Y,
+                endPoint.X, endPoint.Y);
+
+            return ImageBoundsToRect(selectImageBounds);
+        }
+
+        private Rectangle ImageBoundsToRect(Rectangle bounds)
+        {
+            Rectangle rect = bounds;
+            int x = 0, y = 0;
+            x = Math.Min(rect.X, rect.Right);
+            y = Math.Min(rect.Y, rect.Bottom);
+
+            rect.X = x;
+            rect.Y = y;
+
+            rect.Width = Math.Max(1, Math.Abs(rect.Width));
+            rect.Height = Math.Max(1, Math.Abs(rect.Height));
+            return rect;
+        }
+        #endregion
+
+        #region 矩形边的六个小角
+
+        private void SetSizeGrip(Point point)
+        {
+            SizeGrip = SizeGrip.None;
+            foreach (SizeGrip sizeGrip in SizeGripRectList.Keys)
+            {
+                if (sizeGripRectList[sizeGrip].Contains(point))
+                {
+                    SizeGrip = sizeGrip;
+                    break;
+                }
+            }
+
+            if (SizeGrip == SizeGrip.None)
+            {
+                if (selectImageRect.Contains(point))
+                {
+                    SizeGrip = SizeGrip.All;
+                }
+            }
+
+            switch (SizeGrip)
+            {
+                case SizeGrip.TopLeft:
+                case SizeGrip.BottomRight:
+                    Cursor = Cursors.SizeNWSE;
+                    break;
+                case SizeGrip.TopRight:
+                case SizeGrip.BottomLeft:
+                    Cursor = Cursors.SizeNESW;
+                    break;
+                case SizeGrip.Top:
+                case SizeGrip.Bottom:
+                    Cursor = Cursors.SizeNS;
+                    break;
+                case SizeGrip.Left:
+                case SizeGrip.Right:
+                    Cursor = Cursors.SizeWE;
+                    break;
+                case SizeGrip.All:
+                    Cursor = Cursors.SizeAll;
+                    break;
+                default:
+                    Cursor = Cursors.Default;
+                    break;
+            }
+        }
+        #endregion
+
+        #region 截图矩形的大小
+        /// <summary>
+        /// 截图矩形的大小
+        /// </summary>
+        /// <param name="g"></param>
+        /// <param name="rect"></param>
+        private void DrawImageSizeInfo(Graphics g, Rectangle rect)
+        {
+            string text = string.Format(
+                            "{0}x{1}",
+                            rect.Width,
+                            rect.Height);
+            Size textSize = TextRenderer.MeasureText(text, TextFont);
+            Rectangle screenBounds = Screen.GetBounds(this);
+            int x = 0;
+            int y = 0;
+            if (rect.X + textSize.Width > screenBounds.Right - 3)
+            {
+                x = screenBounds.Right - textSize.Width - 3;
+            }
+            else
+            {
+                x = rect.X + 2;
+            }
+
+            if (rect.Y - textSize.Width < screenBounds.Y + 3)
+            {
+                y = rect.Y + 2;
+            }
+            else
+            {
+                y = rect.Y - textSize.Height - 2;
+            }
+            Rectangle textrect = new Rectangle(x, y, textSize.Width, textSize.Height);
+            g.FillRectangle(Brushes.Black, textrect);
+            TextRenderer.DrawText(g, text, TextFont, textrect, Color.White);
+        }
+        #endregion
+
     }
 
     
