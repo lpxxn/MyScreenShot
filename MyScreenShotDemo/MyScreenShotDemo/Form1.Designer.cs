@@ -37,7 +37,7 @@
             this.btn_Shot.Name = "btn_Shot";
             this.btn_Shot.Size = new System.Drawing.Size(75, 23);
             this.btn_Shot.TabIndex = 0;
-            this.btn_Shot.Text = "button1";
+            this.btn_Shot.Text = "截图";
             this.btn_Shot.UseVisualStyleBackColor = true;
             this.btn_Shot.Click += new System.EventHandler(this.btn_Shot_Click);
             // 

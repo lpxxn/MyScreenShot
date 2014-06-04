@@ -13,13 +13,18 @@ using System.Windows.Forms.VisualStyles;
 
 namespace MyScreenShotDemo
 {
+    using System.Diagnostics;
+
     public partial class ScreenImageWindow : Form
     {
         #region 属性
-
+        /// <summary>
+        /// 当前矩形的一个副本
+        /// </summary>
         private Rectangle selectImageBounds;
 
         private Rectangle selectImageRect;
+        //展示在窗体上的矩形
         public Rectangle SelectImageRect
         {
             get
@@ -39,6 +44,9 @@ namespace MyScreenShotDemo
         }
 
         private bool selectedImage;
+        /// <summary>
+        /// 是否已画出矩形
+        /// </summary>
         public bool SelectedImage
         {
             get { return selectedImage; }
@@ -55,11 +63,6 @@ namespace MyScreenShotDemo
                     sizeGripRectList = new Dictionary<SizeGrip, Rectangle>();
                 return sizeGripRectList;
             }
-        }
-
-        private Cursor SelectCursor
-        {
-            get; set;
         }
 
         private SizeGrip sizeGrip;
@@ -81,6 +84,7 @@ namespace MyScreenShotDemo
 
         private static readonly Font TextFont =
            new Font("Times New Roman", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+        
         #endregion
 
         #region
@@ -105,8 +109,8 @@ namespace MyScreenShotDemo
             ShowInTaskbar = false;
             FormBorderStyle = FormBorderStyle.None;
 
-            //Bounds = Screen.GetBounds(this);
-            Bounds = new Rectangle(200, 200, 500, 500);
+            Bounds = Screen.GetBounds(this);
+            //Bounds = new Rectangle(200, 200, 500, 500);
 
             BackgroundImage = GetScreenImage();
 
@@ -139,7 +143,7 @@ namespace MyScreenShotDemo
                     {
                         mouseDown = true;
                         mouseDownPoint = e.Location;
-                        //ClipCursor(false);
+                        ClipCursor(true);
                     }
                 }
                 else
@@ -150,8 +154,7 @@ namespace MyScreenShotDemo
             }
             else
             {
-                mouseDown = true;
-                mouseDownPoint = e.Location;
+                SaveImage();
             }
         }
 
@@ -219,6 +222,7 @@ namespace MyScreenShotDemo
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            Debug.WriteLine("pain");
             base.OnPaint(e);
             Graphics g = e.Graphics;
 
@@ -231,7 +235,7 @@ namespace MyScreenShotDemo
                 {
                     if (!SelectedImage || SizeGrip != SizeGrip.None)
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.Blue))
+                        using (SolidBrush brush = new SolidBrush(Color.Transparent))
                         {
                             g.FillRectangle(brush, rect);
                         }
@@ -239,10 +243,10 @@ namespace MyScreenShotDemo
                     }
                 }
 
-                using (Pen pen = new Pen(Color.Red))
+                using (Pen pen = new Pen(Color.Blue))
                 {
                     g.DrawRectangle(pen, rect);
-                    using (SolidBrush brush = new SolidBrush(Color.Chartreuse))
+                    using (SolidBrush brush = new SolidBrush(Color.Blue))
                     {
                         foreach (var rectangle in SizeGripRectList.Values)
                         {
@@ -284,7 +288,7 @@ namespace MyScreenShotDemo
         }
         #endregion
 
-        #region 四个角的位置
+        #region 矩形边的六个小角
         private void CalCulateSizeGripRect()
         {
             Rectangle rect = SelectImageRect;
@@ -295,6 +299,7 @@ namespace MyScreenShotDemo
             int centerY = y + rect.Height / 2;
 
             Dictionary<SizeGrip, Rectangle> list = SizeGripRectList;
+
             list.Clear();
 
             list.Add(
@@ -325,10 +330,14 @@ namespace MyScreenShotDemo
         #endregion
 
         #region
-
+        /// <summary>
+        /// 改变已经画好的矩形的大小
+        /// </summary>
+        /// <param name="point"></param>
         private void ChangeSelctImageRect(Point point)
         {
             Rectangle rect = selectImageBounds;
+            
             int left = rect.Left;
             int top = rect.Top;
             int right = rect.Right;
@@ -377,8 +386,11 @@ namespace MyScreenShotDemo
                 rect.Height = bottom - top;
             }
             mouseDownPoint = point;
+            //把计算好的range 赋值给selectImageBounds
             selectImageBounds = rect;
-            SelectImageRect = ImageBoundsToRect(rect);
+            
+            SelectImageRect = ImageBoundsToRect(rect);        
+            Debug.WriteLine("change");
         }
         #endregion
 
@@ -388,7 +400,7 @@ namespace MyScreenShotDemo
                 this.Close();
         }
 
-
+        #region 鼠标可移动范围
         /// <summary>
         /// 鼠标可移动范围
         /// </summary>
@@ -409,10 +421,15 @@ namespace MyScreenShotDemo
 
             MouseCanMoveRange.ClipCursor(ref nativeRect);
         }
-
+        #endregion
 
         #region 截图的矩形
 
+        /// <summary>
+        /// 根据点画出矩形
+        /// </summary>
+        /// <param name="endPoint"></param>
+        /// <returns></returns>
         private Rectangle GetSelectImageRect(Point endPoint)
         {
             selectImageBounds = Rectangle.FromLTRB(mouseDownPoint.X,
@@ -422,6 +439,11 @@ namespace MyScreenShotDemo
             return ImageBoundsToRect(selectImageBounds);
         }
 
+        /// <summary>
+        /// 把矩形的坐标转换成正确
+        /// </summary>
+        /// <param name="bounds"></param>
+        /// <returns></returns>
         private Rectangle ImageBoundsToRect(Rectangle bounds)
         {
             Rectangle rect = bounds;
@@ -438,8 +460,11 @@ namespace MyScreenShotDemo
         }
         #endregion
 
-        #region 矩形边的六个小角
-
+        #region 鼠标移动到画好的矩形上的样式
+        /// <summary>
+        /// 鼠标移动到画好的矩形上的样式
+        /// </summary>
+        /// <param name="point"></param>
         private void SetSizeGrip(Point point)
         {
             SizeGrip = SizeGrip.None;
@@ -490,7 +515,7 @@ namespace MyScreenShotDemo
 
         #region 截图矩形的大小
         /// <summary>
-        /// 截图矩形的大小
+        /// 截图矩形的大小信息
         /// </summary>
         /// <param name="g"></param>
         /// <param name="rect"></param>
@@ -526,6 +551,79 @@ namespace MyScreenShotDemo
             TextRenderer.DrawText(g, text, TextFont, textrect, Color.White);
         }
         #endregion
+
+        #region 保存
+        /// <summary>
+        /// 保存
+        /// </summary>
+        public void SaveImage()
+        {
+            if (SelectedImage)
+            {
+                SaveFileDialog saveFile=new SaveFileDialog();
+                saveFile.Filter =
+                    @"BMP 文件(*.bmp)|*.bmp|JPEG 文件(*.jpg,*.jpeg)|*.jpg,*.jpeg|PNG 文件(*.png)|*.png|GIF 文件(*.gif)|*.gif";
+                saveFile.DefaultExt = @"bmp";
+                if (saveFile.ShowDialog() == DialogResult.OK)
+                {
+                    Image img = DrawImage();
+                    ImageFormat imageFormat = ImageFormat.Bmp;
+                    string fileName = saveFile.FileName;
+                    int index = fileName.LastIndexOf('.');
+                    string extion = fileName.Substring(index + 1, fileName.Length - index - 1);
+
+                    switch (extion)
+                    {
+                        case "jpg":
+                        case "jpeg":
+                            imageFormat = ImageFormat.Jpeg;
+                            break;
+                        case "png":
+                            imageFormat = ImageFormat.Png;
+                            break;
+                        case "gif":
+                            imageFormat = ImageFormat.Gif;
+                            break;
+                    }
+                    img.Save(saveFile.FileName, imageFormat);
+                    this.Close();
+                }
+            }
+        }
+
+        private Image DrawImage()
+        {
+            Image image;
+            using (Bitmap allbmp = new Bitmap(Width, Height, PixelFormat.Format32bppArgb))
+            {
+                using (Graphics allgs = Graphics.FromImage(allbmp))
+                {
+                    allgs.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    allgs.SmoothingMode = SmoothingMode.AntiAlias;
+                    allgs.DrawImage(BackgroundImage, Point.Empty);
+                    allgs.Flush();
+
+                    Bitmap bmp = new Bitmap(selectImageRect.Width, selectImageRect.Height, PixelFormat.Format32bppArgb);
+
+                    Graphics g = Graphics.FromImage(bmp);
+                    g.DrawImage(allbmp, 0, 0, selectImageRect, GraphicsUnit.Pixel);
+                    g.Flush();
+                    g.Dispose();
+                    image = bmp;
+                }
+            }
+            return image;
+        }
+        #endregion
+        // 清空
+        private void ResetSelectImage()
+        {
+            SelectedImage = false;
+            selectImageBounds = Rectangle.Empty;
+            SelectImageRect = Rectangle.Empty;
+            SizeGrip = SizeGrip.None;                        
+            base.Invalidate();
+        }
 
     }
 
