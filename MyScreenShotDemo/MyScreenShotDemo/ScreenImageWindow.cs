@@ -117,7 +117,7 @@ namespace MyScreenShotDemo
         }
         #endregion
 
-        #region Override
+        #region Override方法
 
         protected override void OnMouseEnter(EventArgs e)
         {
@@ -235,7 +235,7 @@ namespace MyScreenShotDemo
                 {
                     if (!SelectedImage || SizeGrip != SizeGrip.None)
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.Transparent))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(90, Color.LightBlue)))
                         {
                             g.FillRectangle(brush, rect);
                         }
