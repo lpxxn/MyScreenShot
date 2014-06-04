@@ -257,10 +257,10 @@ namespace MyScreenShotDemo
                     }
                 }
 
-                using (Pen pen = new Pen(Color.Blue))
+                using (Pen pen = new Pen(Color.Red))
                 {
                     g.DrawRectangle(pen, rect);
-                    using (SolidBrush brush = new SolidBrush(Color.Blue))
+                    using (SolidBrush brush = new SolidBrush(Color.Red))
                     {
                         foreach (var rectangle in SizeGripRectList.Values)
                         {
