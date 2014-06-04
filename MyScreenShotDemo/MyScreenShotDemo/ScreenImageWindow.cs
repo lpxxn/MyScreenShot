@@ -249,10 +249,10 @@ namespace MyScreenShotDemo
                 {
                     if (!SelectedImage || SizeGrip != SizeGrip.None)
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(95, Color.LightBlue)))
-                        {
-                            g.FillRectangle(brush, rect);
-                        }
+                        //using (SolidBrush brush = new SolidBrush(Color.FromArgb(95, Color.LightBlue)))
+                        //{
+                        //    g.FillRectangle(brush, rect);
+                        //}
                         DrawImageSizeInfo(g, rect);
                     }
                 }
@@ -339,7 +339,8 @@ namespace MyScreenShotDemo
         }
         #endregion
 
-        #region
+        #region 改变已经画好的矩形的大小
+
         /// <summary>
         /// 改变已经画好的矩形的大小
         /// </summary>
@@ -347,7 +348,7 @@ namespace MyScreenShotDemo
         private void ChangeSelctImageRect(Point point)
         {
             Rectangle rect = m_selectImageBounds;
-            
+
             int left = rect.Left;
             int top = rect.Top;
             int right = rect.Right;
@@ -395,6 +396,24 @@ namespace MyScreenShotDemo
                 rect.Width = right - left;
                 rect.Height = bottom - top;
             }
+            #region move scope
+            if (rect.X < 0)
+            {
+                rect.X = 0;
+            }
+            if (rect.Y < 0)
+            {
+                rect.Y = 0;
+            }
+            if (rect.Right > this.Width)
+            {
+                rect.X = this.Right - rect.Width;
+            }
+            if (rect.Bottom > this.Height)
+            {
+                rect.Y = this.Height - rect.Height;
+            }
+            #endregion
             mouseDownPoint = point;
             //把计算好的range 赋值给selectImageBounds
             m_selectImageBounds = rect;
@@ -404,11 +423,13 @@ namespace MyScreenShotDemo
         }
         #endregion
 
+        #region 按键事件
         private void ScreenImageWindow_KeyDown(object sender, KeyEventArgs e)
         {
             if(e.KeyCode==Keys.Escape)
                 this.Close();
         }
+        #endregion
 
         #region 鼠标可移动范围
         /// <summary>
@@ -625,6 +646,8 @@ namespace MyScreenShotDemo
             return image;
         }
         #endregion
+
+        #region 清空
         // 清空
         private void ResetSelectImage()
         {
@@ -634,6 +657,7 @@ namespace MyScreenShotDemo
             SizeGrip = SizeGrip.None;                        
             base.Invalidate();
         }
+        #endregion
 
     }
 
