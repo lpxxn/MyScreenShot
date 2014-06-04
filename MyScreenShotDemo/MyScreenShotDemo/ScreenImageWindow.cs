@@ -19,9 +19,13 @@ namespace MyScreenShotDemo
     {
         #region 属性
         /// <summary>
+        /// 桌面背景图片
+        /// </summary>
+        private Image m_screenImage;
+        /// <summary>
         /// 当前矩形的一个副本
         /// </summary>
-        private Rectangle selectImageBounds;
+        private Rectangle m_selectImageBounds;
 
         private Rectangle selectImageRect;
         //展示在窗体上的矩形
@@ -111,8 +115,15 @@ namespace MyScreenShotDemo
 
             Bounds = Screen.GetBounds(this);
             //Bounds = new Rectangle(200, 200, 500, 500);
+            m_screenImage = this.GetScreenImage();
 
-            BackgroundImage = GetScreenImage();
+            Image backScreen = new Bitmap(m_screenImage);
+
+            Graphics g = Graphics.FromImage(backScreen);
+            SolidBrush mask = new SolidBrush(Color.FromArgb(100, 0, 0, 0));
+            g.FillRectangle(mask, 0, 0, backScreen.Width, backScreen.Height);
+            g.Dispose();
+            BackgroundImage = backScreen;
 
         }
         #endregion
@@ -206,7 +217,7 @@ namespace MyScreenShotDemo
                     base.Invalidate();
                     if (SizeGrip != SizeGrip.None)
                     {
-                        selectImageBounds = SelectImageRect;
+                        m_selectImageBounds = SelectImageRect;
                         SizeGrip = SizeGrip.None;
                     }
                 }
@@ -221,11 +232,14 @@ namespace MyScreenShotDemo
         }
 
         protected override void OnPaint(PaintEventArgs e)
-        {
-            Debug.WriteLine("pain");
+        {            
             base.OnPaint(e);
             Graphics g = e.Graphics;
-
+            if (!selectImageRect.IsEmpty)
+            {
+                //显示原色
+                g.DrawImage(m_screenImage, selectImageRect, selectImageRect, GraphicsUnit.Pixel);
+            }
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
             if (SelectImageRect.Width != 0 && SelectImageRect.Height != 0)
@@ -235,7 +249,7 @@ namespace MyScreenShotDemo
                 {
                     if (!SelectedImage || SizeGrip != SizeGrip.None)
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(90, Color.LightBlue)))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(95, Color.LightBlue)))
                         {
                             g.FillRectangle(brush, rect);
                         }
@@ -254,11 +268,7 @@ namespace MyScreenShotDemo
                         }
                     }
                 }
-
-
-            }
-            
-            
+            }                        
         }
 
         #endregion
@@ -336,7 +346,7 @@ namespace MyScreenShotDemo
         /// <param name="point"></param>
         private void ChangeSelctImageRect(Point point)
         {
-            Rectangle rect = selectImageBounds;
+            Rectangle rect = m_selectImageBounds;
             
             int left = rect.Left;
             int top = rect.Top;
@@ -387,7 +397,7 @@ namespace MyScreenShotDemo
             }
             mouseDownPoint = point;
             //把计算好的range 赋值给selectImageBounds
-            selectImageBounds = rect;
+            m_selectImageBounds = rect;
             
             SelectImageRect = ImageBoundsToRect(rect);        
             Debug.WriteLine("change");
@@ -432,11 +442,11 @@ namespace MyScreenShotDemo
         /// <returns></returns>
         private Rectangle GetSelectImageRect(Point endPoint)
         {
-            selectImageBounds = Rectangle.FromLTRB(mouseDownPoint.X,
+            m_selectImageBounds = Rectangle.FromLTRB(mouseDownPoint.X,
                 mouseDownPoint.Y,
                 endPoint.X, endPoint.Y);
 
-            return ImageBoundsToRect(selectImageBounds);
+            return ImageBoundsToRect(m_selectImageBounds);
         }
 
         /// <summary>
@@ -600,7 +610,7 @@ namespace MyScreenShotDemo
                 {
                     allgs.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     allgs.SmoothingMode = SmoothingMode.AntiAlias;
-                    allgs.DrawImage(BackgroundImage, Point.Empty);
+                    allgs.DrawImage(m_screenImage, Point.Empty);
                     allgs.Flush();
 
                     Bitmap bmp = new Bitmap(selectImageRect.Width, selectImageRect.Height, PixelFormat.Format32bppArgb);
@@ -619,7 +629,7 @@ namespace MyScreenShotDemo
         private void ResetSelectImage()
         {
             SelectedImage = false;
-            selectImageBounds = Rectangle.Empty;
+            m_selectImageBounds = Rectangle.Empty;
             SelectImageRect = Rectangle.Empty;
             SizeGrip = SizeGrip.None;                        
             base.Invalidate();
