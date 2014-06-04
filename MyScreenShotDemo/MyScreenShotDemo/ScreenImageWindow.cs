@@ -354,6 +354,8 @@ namespace MyScreenShotDemo
             int right = rect.Right;
             int bottom = rect.Bottom;
             bool sizeGripAll = false;
+
+            #region calculate size
             switch (SizeGrip)
             {
                 case SizeGrip.All:
@@ -396,6 +398,8 @@ namespace MyScreenShotDemo
                 rect.Width = right - left;
                 rect.Height = bottom - top;
             }
+            #endregion
+
             #region move scope
             if (rect.X < 0)
             {
@@ -418,8 +422,7 @@ namespace MyScreenShotDemo
             //把计算好的range 赋值给selectImageBounds
             m_selectImageBounds = rect;
             
-            SelectImageRect = ImageBoundsToRect(rect);        
-            Debug.WriteLine("change");
+            SelectImageRect = ImageBoundsToRect(rect);                    
         }
         #endregion
 
